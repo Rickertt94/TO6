@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 
 
 public class TemplateReader {
-	String fileName = "C:/Users/gebruiker/Desktop/ACMP_Template.txt";
+	String fileName = "C:/Users/gebruiker/Desktop/ALIS_Template.txt";
 	String fileName2 = null;
 	
 	
