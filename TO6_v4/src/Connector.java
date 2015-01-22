@@ -21,6 +21,7 @@ public class Connector {
 	private String businessTrigger, businessEvent, columnName, businessValue, rowID, ruleCode, ruleName, operatorName = null;
 	private String tSQL1, appName1, tCode, cdName, entName, appName, tSQL, tName, tEvent, tTrigger, tTable, tColumnID, tOperatorID, tValueID;
 	private Connection con, con2;
+	private String value1 = null, value2 = null;
 	
 	public void connect(String s, String p, String h, String dbU, String dbP) throws SQLException{
 		SSID = s; 
@@ -242,17 +243,32 @@ public class Connector {
 	        int result1 = result.getInt(2); 
 	        resultList.add(result1);
 			}
-			String listString = "";
+			String listString = "(";
 
 			for (int s = 0; s < resultList.size() -1; s++)
 			{
 			    listString += "'" + resultList.get(s) + "', ";
 			}
 			for (int s1 = resultList.size()-1; s1 < resultList.size(); s1++){
-				listString += "'" + resultList.get(s1) + "'";
+				listString += "'" + resultList.get(s1) + "')";
 			}
 			
 		return listString;	   
+		}
+		
+		//Hier worden de values voor een ARNG rule toegevoegd.
+		public void getValues(String i) throws SQLException{
+			rowID = i;			
+			String sql = "Select * from VALUE where BUSINESSRULE_ID ='" + rowID + "'";
+				
+			PreparedStatement statement = con.prepareStatement(sql);
+				
+			ResultSet result = statement.executeQuery();
+				
+			result.next();
+				value1 = result.getString("VALUE");
+			result.next();
+				value2 = result.getString("VALUE");
 		}
 			
 		//Hier wordt de errorMessage opgehaald
@@ -273,24 +289,54 @@ public class Connector {
 			return errorMessage;
 		}
 	
+		//Hier wordt de code van opgehaald
+		public String getCode(String i) throws SQLException{
+			rowID = i;
+			String brCode = null;
+			
+			String sql = "Select * from BUSINESSRULE where ID ='" + rowID + "'";
+				
+			PreparedStatement statement = con.prepareStatement(sql);
+				
+			ResultSet result = statement.executeQuery();
+				
+			while(result.next()){
+				brCode = result.getString("CODE");
+			}
+			return brCode;
+		}
+		
 		
 	//HIER BOVEN IS NODIG OM ALLE GEGEVENS OP TE HALEN VOOR DE GENERATIE VAN DE SQL TRIGGER.
 		
 		
 	//Hier vind de generatie van de trigger plaats. 
-		public void generateTriggerTXT(String n, String loc) throws SQLException, IOException{
+		public void generateTriggerTXT(String n, String loc2, String loc) throws SQLException, IOException{
 			TemplateReader tr = new TemplateReader();
 			String fileName = loc;
-			
-			tr.readTemplate(fileName);
-			
+			String fileName2 = loc2;
+			tr.readTemplate(fileName2, fileName);
+			String tValue = null;
+			String tValue2 = null;
+			String tCode = this.getCode(n);
 			String tName = this.generateName(n);
 			String tEvent = this.getEventName(n);
 			String tTrigger = this.getTriggerName(n);
 			String tTable = this.getTableName(n);
 			String tColumn = this.getColumnName(n);
 			String tOperator = this.getOperatorName(n);
-			String tValue = this.getValueName(n);
+			
+			if(tCode.equals("ACMP")){
+				tValue = this.getValueName(n);
+			}
+			else if(tCode.equals("ALIS")){
+				tValue = this.getValueName(n);	
+			}
+			else if(tCode.equals("ARNG")){
+				this.getValues(n);
+				tValue = value1;
+				tValue2 = value2;
+			}
 			String tError = this.getErrorMessage(n);
 			
 
@@ -301,6 +347,7 @@ public class Connector {
 			tr.changeNames(fileName, "%COLUMNNAME%", tColumn);
 			tr.changeNames(fileName, "%OPERATORNAME%", tOperator);
 			tr.changeNames(fileName, "%VALUENAME%", tValue);
+			tr.changeNames(fileName, "%VALUENAME2%", tValue2);
 			tr.changeNames(fileName, "%ERROR%", tError);
 			
 			System.out.println("--- Trigger Generated! ---");
@@ -310,7 +357,7 @@ public class Connector {
 		// De trigger toevoegen aan de target database.
 		public void executeTrigger(String n, String loc, String loc2) throws SQLException, IOException{
 			
-			this.generateTriggerTXT(n, loc);
+			this.generateTriggerTXT(n, loc2, loc);
 			
 			
 			rowID = n;
@@ -351,6 +398,7 @@ public class Connector {
 			Path path2 = Paths.get(loc);
 			Charset charset = StandardCharsets.UTF_8;
 			String content = new String(Files.readAllBytes(path2), charset);
+			System.out.println(content);
 			Statement statement2 = con2.prepareStatement(content);
 			statement2.execute(content);
 			
