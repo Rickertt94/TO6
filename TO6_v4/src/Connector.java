@@ -77,9 +77,31 @@ public class Connector {
 				ResultSet result = statement.executeQuery();
 				
 				while(result.next()){
-					entName = result.getString("TABLE1");
 					cdName = result.getString("CODE");
 					}		
+				
+				// Om de juiste kolom te vinden
+				String sql1 = "Select * from COLUMN1 where BUSINESSRULE_ID ='" + rowID + "'";
+				String fk = null;
+				String tableName = null;
+				PreparedStatement statement1 = con.prepareStatement(sql1);
+				
+				ResultSet result1 = statement1.executeQuery();
+				
+				while(result1.next()){
+					fk = result1.getString("FK_TABLE1");
+					}		
+				
+				// Om de juiste tabel te vinden
+				String sql2 = "Select * from TABLE1 where ID ='" + fk + "'";
+				PreparedStatement statement2 = con.prepareStatement(sql2);
+				
+				ResultSet result2 = statement2.executeQuery();
+				
+				while(result2.next()){
+					entName = result2.getString("NAME");
+					}	
+				
 				return entName.substring(0,2) + entName.substring(entName.length()-1, entName.length()) + "_" + cdName;
 			}
 
@@ -132,17 +154,29 @@ public class Connector {
 		//Hier wordt de tableName opgehaald.
 		public String getTableName(String i) throws SQLException{
 			rowID = i;
-			String tableName = null;
 			
-			String sql = "Select * from BUSINESSRULE where ID ='" + rowID + "'";
-				
-			PreparedStatement statement = con.prepareStatement(sql);
-				
-			ResultSet result = statement.executeQuery();
-				
-			while(result.next()){
-				tableName = result.getString("TABLE1");
-			}
+			// Om de juiste kolom te vinden
+			String sql1 = "Select * from COLUMN1 where BUSINESSRULE_ID ='" + rowID + "'";
+			String fk = null;
+			String tableName = null;
+			PreparedStatement statement1 = con.prepareStatement(sql1);
+			
+			ResultSet result1 = statement1.executeQuery();
+			
+			while(result1.next()){
+				fk = result1.getString("FK_TABLE1");
+				}		
+			
+			// Om de juiste tabel te vinden
+			String sql2 = "Select * from TABLE1 where ID ='" + fk + "'";
+			PreparedStatement statement2 = con.prepareStatement(sql2);
+			
+			ResultSet result2 = statement2.executeQuery();
+			
+			while(result2.next()){
+				tableName = result2.getString("NAME");
+				}	
+			
 			return tableName;
 		}
 		
@@ -317,7 +351,6 @@ public class Connector {
 			Path path2 = Paths.get(loc);
 			Charset charset = StandardCharsets.UTF_8;
 			String content = new String(Files.readAllBytes(path2), charset);
-			
 			Statement statement2 = con2.prepareStatement(content);
 			statement2.execute(content);
 			

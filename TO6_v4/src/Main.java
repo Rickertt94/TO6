@@ -8,7 +8,7 @@ import java.sql.SQLException;
 public class Main {
 	public static void main(String[] args) throws SQLException, IOException{
 		Connector con = new Connector();
-		String fileName = "C:/Users/gebruiker/Desktop/ACMP_BR1.txt";
+		String fileName = "C:/Users/gebruiker/Desktop/ALIS_BR1.txt";
 		
 		try {
 			con.connect("cursus01.hu.nl", "8521", "ondora01.hu.nl", "tho6_2014_2c_team2", "tho6_2014_2c_team2");
@@ -17,7 +17,7 @@ public class Main {
 			e.printStackTrace();
 		}
 		
-		con.executeTrigger("61", fileName, fileName);
+		con.executeTrigger("100", fileName, fileName);
 		
 	}
 }
