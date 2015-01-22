@@ -319,9 +319,7 @@ public class Connector {
 			String content = new String(Files.readAllBytes(path2), charset);
 			
 			Statement statement2 = con2.prepareStatement(content);
-			System.out.println(content);
 			statement2.execute(content);
-	
-			System.out.println(content);
+			
 		}
 }
