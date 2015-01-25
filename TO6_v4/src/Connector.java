@@ -10,31 +10,29 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
 
 public class Connector {
-	private String SSID, host, dbUsername, dbPassword, applicatie, port, connection;
-	private String businessTrigger, businessEvent, columnName, businessValue, rowID, ruleCode, ruleName, operatorName = null;
+	private String ssid, host, dbUsername, dbPassword, applicatie, port, connection;
+	private String businessTrigger, businessEvent, columnName, businessValue, rowID, rowID2, ruleCode, ruleName, operatorName = null;
 	private String tSQL1, appName1, tCode, cdName, entName, appName, tSQL, tName, tEvent, tTrigger, tTable, tColumnID, tOperatorID, tValueID;
 	private Connection con, con2;
-	private String value1 = null, value2 = null;
 
-	public void connect(String s, String p, String h, String dbU, String dbP) throws SQLException{
-		SSID = s; 
-		port = p;
-		host = h;
-		dbUsername = dbU;
-		dbPassword = dbP;
-		connection = "jdbc:oracle:thin:@" + host + ":" + port + "/" + SSID;
+	public Connector() {}
+	
+	public void connect(String ssid, String prt, String hst, String dbU, String dbP) throws SQLException{
+		this.ssid = ssid; 
+		this.port = prt;
+		this.host = hst;
+		this.dbUsername = dbU;
+		this.dbPassword = dbP;
+		this.connection = "jdbc:oracle:thin:@" + host + ":" + port + "/" + ssid;
 
 		con = DriverManager.getConnection(connection, dbUsername, dbPassword);
 		System.out.println("--- Connection Succes! ---");
-
-
 	}
 
 	// VANAF HIER WORDEN DE STUKKEN CODE UIT DE DATABASE GEHAALD DIE NODIG ZIJN VOOR SQL-CODE GENERATIE //
@@ -52,7 +50,9 @@ public class Connector {
 
 		while(result.next()){
 			appName = result.getString("APPLICATION_ID");
-		}		
+		}
+		
+		result.close();
 
 		//Vanaf hier opzoek naar de applicatie gegevens. 
 		String sql1 = "Select * from APPLICATION where ID ='" + appName + "'";
@@ -63,7 +63,9 @@ public class Connector {
 
 		while(result1.next()){
 			appName1 = result1.getString("HOST");
-		}		
+		}
+		
+		result1.close();
 
 		return appName1.substring(0,2) + appName1.substring(appName1.length()-1, appName1.length());
 	}
@@ -91,7 +93,9 @@ public class Connector {
 
 		while(result1.next()){
 			fk = result1.getString("FK_TABLE1");
-		}		
+		}
+		
+		result1.close();
 
 		// Om de juiste tabel te vinden
 		String sql2 = "Select * from TABLE1 where ID ='" + fk + "'";
@@ -101,7 +105,9 @@ public class Connector {
 
 		while(result2.next()){
 			entName = result2.getString("NAME");
-		}	
+		}
+		
+		result2.close();
 
 		return entName.substring(0,2) + entName.substring(entName.length()-1, entName.length()) + "_" + cdName;
 	}
@@ -149,53 +155,67 @@ public class Connector {
 		while(result.next()){
 			triggerName = result.getString("RULETRIGGER");
 		}
+		result.close();
 		return triggerName;
 	}
 
 	//Hier wordt de tableName opgehaald.
-	public String getTableName(String i) throws SQLException{
-		rowID = i;
+	public String getTableName(String id, int index) throws SQLException{
+		rowID = id;
+		int columnIndex = index-1;
 
 		// Om de juiste kolom te vinden
-		String sql1 = "Select * from COLUMN1 where BUSINESSRULE_ID ='" + rowID + "'";
-		String fk = null;
-		String tableName = null;
+		String sql1 = "Select * from COLUMN1 where BUSINESSRULE_ID ='" + rowID + "' ORDER BY ID ASC";
 		PreparedStatement statement1 = con.prepareStatement(sql1);
 
 		ResultSet result1 = statement1.executeQuery();
+		ArrayList<String> foreignkeys = new ArrayList<String>();
 
 		while(result1.next()){
-			fk = result1.getString("FK_TABLE1");
-		}		
+			foreignkeys.add(result1.getString("FK_TABLE1"));
+		}
+		
+		result1.close();
+
+		ArrayList<String> bla = new ArrayList<String>();
 
 		// Om de juiste tabel te vinden
-		String sql2 = "Select * from TABLE1 where ID ='" + fk + "'";
-		PreparedStatement statement2 = con.prepareStatement(sql2);
+		for(int k = 0; k < foreignkeys.size(); k++){
+			String sql2 = "Select * from TABLE1 where ID ='" + foreignkeys.get(k) + "'";
+			PreparedStatement statement2 = con.prepareStatement(sql2);
 
-		ResultSet result2 = statement2.executeQuery();
+			ResultSet result2 = statement2.executeQuery();
 
-		while(result2.next()){
-			tableName = result2.getString("NAME");
-		}	
-
+			while(result2.next()){
+				bla.add(result2.getString("NAME"));
+			}
+			
+			result2.close();
+		}
+		String tableName = bla.get(columnIndex);
+		//		System.out.println(tableName);
 		return tableName;
 	}
 
 	//Hier wordt de columnName opgehaald.
-	public String getColumnName(String i) throws SQLException{
+	public String getColumnName(String i, int j) throws SQLException{
 		rowID = i;
-		String columnName = null;
+		int columnIndex = j-1;
 
-		String sql = "Select * from COLUMN1 where BUSINESSRULE_ID ='" + rowID + "'";
+		String sql = "Select * from COLUMN1 where BUSINESSRULE_ID ='" + rowID + "' ORDER BY ID ASC";
 
 		PreparedStatement statement = con.prepareStatement(sql);
 
 		ResultSet result = statement.executeQuery();
+		ResultSet rs = result;
+		ArrayList<String> bla = new ArrayList<String>();
 
-		while(result.next()){
-			columnName = result.getString("NAME");
+		while (rs.next()) {
+			String columnName = result.getString("NAME");
+			bla.add(columnName);
 		}
-		return columnName;
+
+		return bla.get(columnIndex);
 	}
 
 	//Hier wordt de operator opgehaald
@@ -214,16 +234,20 @@ public class Connector {
 			operatorID = result.getString("OPERATOR_ID");
 		}
 
-		String sql1 = "Select * from OPERATORTYPE where ID ='" + operatorID + "'";
-
-		PreparedStatement statement1 = con.prepareStatement(sql1);
-
-		ResultSet result1 = statement1.executeQuery();
-
-		while(result1.next()){
-			operatorName = result1.getString("NAME");
+		if(operatorID == null || operatorID.equals("")){
+			operatorName = "";
 		}
+		else{
+			String sql1 = "Select * from OPERATORTYPE where ID ='" + operatorID + "'";getClass();
 
+			PreparedStatement statement1 = con.prepareStatement(sql1);
+
+			ResultSet result1 = statement1.executeQuery();
+
+			while(result1.next()){
+				operatorName = result1.getString("NAME");
+			}
+		}
 		return operatorName;
 	}
 
@@ -257,18 +281,20 @@ public class Connector {
 	}
 
 	//Hier worden de values voor een ARNG rule toegevoegd.
-	public void getValues(String i) throws SQLException{
-		rowID = i;			
-		String sql = "Select * from VALUE where BUSINESSRULE_ID ='" + rowID + "'";
+	public String getValues(String id, int index) throws SQLException{
+		rowID = id;
+		int columnIndex = index-1;		
+		String sql = "Select * from VALUE where BUSINESSRULE_ID ='" + rowID + "' ORDER BY ID ASC";
 
 		PreparedStatement statement = con.prepareStatement(sql);
 
 		ResultSet result = statement.executeQuery();
+		ArrayList<String> bla = new ArrayList<String>();
 
-		result.next();
-		value1 = result.getString("VALUE");
-		result.next();
-		value2 = result.getString("VALUE");
+		while (result.next()) {
+			bla.add(result.getString("VALUE"));
+		}
+		return bla.get(columnIndex);
 	}
 
 	//Hier wordt de errorMessage opgehaald
@@ -286,6 +312,9 @@ public class Connector {
 		while(result.next()){
 			errorMessage = result.getString("ERRORMESSAGE");
 		}
+		
+		result.close();
+		
 		return errorMessage;
 	}
 
@@ -322,8 +351,11 @@ public class Connector {
 		String tName = this.generateName(n);
 		String tEvent = this.getEventName(n);
 		String tTrigger = this.getTriggerName(n);
-		String tTable = this.getTableName(n);
-		String tColumn = this.getColumnName(n);
+		String tTable = this.getTableName(n,1);
+		String tTable2 = this.getTableName(n,2);
+		String tColumn = this.getColumnName(n,1);
+		String tColumn2 = this.getColumnName(n,2);
+		String tColumn3 = this.getColumnName(n,3);
 		String tOperator = this.getOperatorName(n);
 
 		if(tCode.equals("ACMP")){
@@ -333,9 +365,18 @@ public class Connector {
 			tValue = this.getValueName(n);	
 		}
 		else if(tCode.equals("ARNG")){
-			this.getValues(n);
-			tValue = value1;
-			tValue2 = value2;
+			tValue = this.getValues(n, 1);
+			tValue2 = this.getValues(n, 2);
+		}
+		else if(tCode.equals("ICMP")){
+			tValue = this.getValues(n, 1);
+		}
+		else if(tCode.equals("AOTH")){
+			tValue = this.getValues(n, 1);
+			tValue2 = this.getValues(n, 2);
+		}
+		else if(tCode.equals("MODI")){
+			tValue = this.getValues(n, 1);
 		}
 		String tError = this.getErrorMessage(n);
 
@@ -344,7 +385,10 @@ public class Connector {
 		tr.changeNames(fileName, "%EVENTNAME%", tEvent);
 		tr.changeNames(fileName, "%TRIGGER%", tTrigger);
 		tr.changeNames(fileName, "%TABLENAME%", tTable);
+		tr.changeNames(fileName, "%TABLENAME2%", tTable2);
 		tr.changeNames(fileName, "%COLUMNNAME%", tColumn);
+		tr.changeNames(fileName, "%COLUMNNAME2%", tColumn2);
+		tr.changeNames(fileName, "%COLUMNNAME3%", tColumn3);
 		tr.changeNames(fileName, "%OPERATORNAME%", tOperator);
 		tr.changeNames(fileName, "%VALUENAME%", tValue);
 		tr.changeNames(fileName, "%VALUENAME2%", tValue2);
@@ -361,7 +405,13 @@ public class Connector {
 
 
 		rowID = n;
-		String applicationID = null, SSID = null, port = null, host = null, dbUsername = null, dbPassword = null;
+
+		String applicationID = null;
+		String ssId = null;
+		String port = null;
+		String host = null;
+		String dbUsername = null;
+		String dbPassword = null;
 
 		//Om de applicatie id te vinden,
 		String sql = "Select * from BUSINESSRULE where ID ='" + rowID + "'";
@@ -385,11 +435,11 @@ public class Connector {
 			dbUsername = result1.getString("DBUSERNAME");
 			dbPassword = result1.getString("dbPassword");
 			host = result1.getString("HOST");
-			SSID = result1.getString("SSID");
+			ssId = result1.getString("SSID");
 			port = result1.getString("PORT");
 		}			
 
-		connection = "jdbc:oracle:thin:@" + host + ":" + port + "/" + SSID;
+		connection = "jdbc:oracle:thin:@" + host + ":" + port + "/" + ssId;
 
 		con2 = DriverManager.getConnection(connection, dbUsername, dbPassword);
 		System.out.println("--- Connection Target Succes! ---");
@@ -398,9 +448,9 @@ public class Connector {
 		Path path2 = Paths.get(loc);
 		Charset charset = StandardCharsets.UTF_8;
 		String content = new String(Files.readAllBytes(path2), charset);
-		System.out.println(content);
+		//		System.out.println(content);
 		Statement statement2 = con2.prepareStatement(content);
 		statement2.execute(content);
-
+		statement2.close();
 	}
 }
